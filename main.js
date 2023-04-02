@@ -4,6 +4,7 @@ import "./style.css";
 import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
 import apObj from "./assets/ap.obj?url";
 import apMap from "./assets/ap_map.jpg";
+import { getObjectScaleVector } from "./utils";
 
 let container;
 
@@ -17,10 +18,28 @@ let windowHalfY = window.innerHeight / 2;
 
 let object;
 
-init();
-animate();
+const onWindowClick = (event) => {
+  const clonedObject = object.clone();
+  clonedObject.position.z = THREE.MathUtils.randFloat(-6, -2);
+  clonedObject.position.y = THREE.MathUtils.randFloat(-2, 2);
+  clonedObject.position.x = THREE.MathUtils.randFloat(-2, 2);
 
-function init() {
+  console.log(getObjectScaleVector());
+  clonedObject.scale.copy(getObjectScaleVector());
+  object.add(clonedObject);
+};
+
+const onWindowResize = () => {
+  windowHalfX = window.innerWidth / 2;
+  windowHalfY = window.innerHeight / 2;
+
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+
+  renderer.setSize(window.innerWidth, window.innerHeight);
+};
+
+const init = () => {
   container = document.getElementById("app");
 
   camera = new THREE.PerspectiveCamera(
@@ -29,7 +48,7 @@ function init() {
     1,
     2000
   );
-  camera.position.z = 100;
+  camera.position.z = 1.3;
 
   // scene
 
@@ -44,16 +63,15 @@ function init() {
 
   // manager
 
-  function loadModel() {
-    object.traverse(function (child) {
+  const loadModel = () => {
+    object.traverse((child) => {
       if (child.isMesh) child.material.map = texture;
     });
 
     object.position.y = 0;
-    object.scale.set(90, 90, 90);
     object.rotateY(1.5);
     scene.add(object);
-  }
+  };
 
   const manager = new THREE.LoadingManager(loadModel);
 
@@ -63,19 +81,19 @@ function init() {
 
   // model
 
-  function onProgress(xhr) {
+  const onProgress = (xhr) => {
     if (xhr.lengthComputable) {
       const percentComplete = (xhr.loaded / xhr.total) * 100;
       console.log("model " + Math.round(percentComplete, 2) + "% downloaded");
     }
-  }
+  };
 
-  function onError() {}
+  const onError = () => {};
 
   const loader = new OBJLoader(manager);
   loader.load(
     apObj,
-    function (obj) {
+    (obj) => {
       object = obj;
       window.OOO = obj;
     },
@@ -93,37 +111,27 @@ function init() {
   document.addEventListener("mousemove", onDocumentMouseMove);
 
   window.addEventListener("resize", onWindowResize);
-}
+  window.addEventListener("click", onWindowClick);
+};
 
-function onWindowResize() {
-  windowHalfX = window.innerWidth / 2;
-  windowHalfY = window.innerHeight / 2;
-
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
-
-  renderer.setSize(window.innerWidth, window.innerHeight);
-}
-
-function onDocumentMouseMove(event) {
+const onDocumentMouseMove = (event) => {
   mouseX = (event.clientX - windowHalfX) / 2;
   mouseY = (event.clientY - windowHalfY) / 2;
-}
+};
 
-function animate() {
+const animate = () => {
   requestAnimationFrame(animate);
   render();
-}
+};
 
-function render() {
-  // camera.position.x += (mouseX - camera.position.x) * 1;
-  // camera.position.y += (-mouseY - camera.position.y) * 1;
-
-  object.rotateY(mouseX * 0.01 + 0.005);
+const render = () => {
+  object.rotateY(mouseX * 0.001 + 0.005);
   object.rotateZ(0.005);
-  // object.rotateX(mouseX * 0.1 - 0.005);
 
   camera.lookAt(scene.position);
 
   renderer.render(scene, camera);
-}
+};
+
+init();
+animate();
