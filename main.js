@@ -6,6 +6,7 @@ import apObj from "./assets/ap.obj?url";
 import apMap from "./assets/ap_map.jpg";
 import { getObjectScaleVector } from "./utils";
 
+const MOUSE_X_SAFE_ZONE_THRESHOLD = 50;
 let container;
 
 let camera, scene, renderer;
@@ -18,9 +19,20 @@ let windowHalfY = window.innerHeight / 2;
 
 let object;
 
+const onClearClick = (event) => {
+  event.stopPropagation();
+  for (const child of object.children) {
+    child.clear();
+  }
+};
+
+document
+  .getElementById("clear-objects")
+  .addEventListener("click", onClearClick);
+
 const onWindowClick = (event) => {
   const clonedObject = object.clone();
-  clonedObject.position.z = THREE.MathUtils.randFloat(-6, -2);
+  clonedObject.position.z = THREE.MathUtils.randFloat(-6, 6);
   clonedObject.position.y = THREE.MathUtils.randFloat(-2, 2);
   clonedObject.position.x = THREE.MathUtils.randFloat(-2, 2);
 
@@ -125,9 +137,14 @@ const animate = () => {
 };
 
 const render = () => {
-  object.rotateY(mouseX * 0.001 + 0.005);
-  object.rotateZ(0.005);
+  const isMouseXInSafeZone =
+    mouseX > -MOUSE_X_SAFE_ZONE_THRESHOLD &&
+    mouseX < MOUSE_X_SAFE_ZONE_THRESHOLD;
 
+  if (!isMouseXInSafeZone) {
+    object.rotateY(mouseX * 0.0005 + 0.001);
+    object.rotateZ(0.00005 * THREE.MathUtils.randInt(-100, 100) * mouseY);
+  }
   camera.lookAt(scene.position);
 
   renderer.render(scene, camera);
