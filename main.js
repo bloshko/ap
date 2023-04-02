@@ -1,15 +1,22 @@
 import * as THREE from "three";
 import "./style.css";
 
-import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
-import apObj from "./assets/ap.obj?url";
-import apMap from "./assets/ap_map.jpg";
+import gamWav from "./assets/gam.wav?url";
+import eatingFbx from "./assets/eating.fbx?url";
+import eatingMap from "./assets/eating_map.jpg";
+
 import { getObjectScaleVector } from "./utils";
+import { FBXLoader } from "three/addons/loaders/FBXLoader.js";
 
 const MOUSE_X_SAFE_ZONE_THRESHOLD = 50;
+
+const OBJ = eatingFbx;
+const TEXTURE_MAP = eatingMap;
+const SOUND = gamWav;
+
 let container;
 
-let camera, scene, renderer;
+let camera, scene, renderer, sound, listener, mixer, action;
 
 let mouseX = 0,
   mouseY = 0;
@@ -18,6 +25,8 @@ let windowHalfX = window.innerWidth / 2;
 let windowHalfY = window.innerHeight / 2;
 
 let object;
+
+const clock = new THREE.Clock();
 
 const onClearClick = (event) => {
   event.stopPropagation();
@@ -30,13 +39,38 @@ document
   .getElementById("clear-objects")
   .addEventListener("click", onClearClick);
 
+const onSoundClick = (event) => {
+  event.stopPropagation();
+  if (sound) {
+    return sound.isPlaying ? sound.stop() : sound.play();
+  }
+
+  listener = new THREE.AudioListener();
+  camera.add(listener);
+
+  // create a global audio source
+  sound = new THREE.Audio(listener);
+
+  // load a sound and set it as the Audio object's buffer
+  const audioLoader = new THREE.AudioLoader();
+  audioLoader.load(SOUND, (buffer) => {
+    sound.setBuffer(buffer);
+    sound.setLoop(true);
+    sound.setVolume(0.3);
+    sound.setPlaybackRate(0.5);
+    sound.play();
+  });
+};
+
+document.getElementById("sound").addEventListener("click", onSoundClick);
+
 const onWindowClick = (event) => {
   const clonedObject = object.clone();
-  clonedObject.position.z = THREE.MathUtils.randFloat(-6, 6);
-  clonedObject.position.y = THREE.MathUtils.randFloat(-2, 2);
-  clonedObject.position.x = THREE.MathUtils.randFloat(-2, 2);
 
-  console.log(getObjectScaleVector());
+  clonedObject.position.z = THREE.MathUtils.randFloat(-500, 500);
+  clonedObject.position.y = THREE.MathUtils.randFloat(-50, 50);
+  clonedObject.position.x = THREE.MathUtils.randFloat(-50, 50);
+
   clonedObject.scale.copy(getObjectScaleVector());
   object.add(clonedObject);
 };
@@ -60,7 +94,7 @@ const init = () => {
     1,
     2000
   );
-  camera.position.z = 1.3;
+  camera.position.z = 100;
 
   // scene
 
@@ -71,6 +105,7 @@ const init = () => {
 
   const pointLight = new THREE.PointLight(0xffffff, 0.8);
   camera.add(pointLight);
+
   scene.add(camera);
 
   // manager
@@ -89,7 +124,7 @@ const init = () => {
 
   // texture
   const textureLoader = new THREE.TextureLoader(manager);
-  const texture = textureLoader.load(apMap);
+  const texture = textureLoader.load(TEXTURE_MAP);
 
   // model
 
@@ -102,10 +137,17 @@ const init = () => {
 
   const onError = () => {};
 
-  const loader = new OBJLoader(manager);
+  const loader = new FBXLoader(manager);
   loader.load(
-    apObj,
+    OBJ,
     (obj) => {
+      mixer = new THREE.AnimationMixer(obj);
+      mixer.timeScale = 2;
+
+      action = mixer.clipAction(obj.animations[0]);
+      action.setLoop(THREE.LoopPingPong);
+      action.play();
+
       object = obj;
       window.OOO = obj;
     },
@@ -137,14 +179,21 @@ const animate = () => {
 };
 
 const render = () => {
-  const isMouseXInSafeZone =
-    mouseX > -MOUSE_X_SAFE_ZONE_THRESHOLD &&
-    mouseX < MOUSE_X_SAFE_ZONE_THRESHOLD;
+  const absMouseX = Math.abs(mouseX);
 
-  if (!isMouseXInSafeZone) {
-    object.rotateY(mouseX * 0.0005 + 0.001);
-    object.rotateZ(0.00005 * THREE.MathUtils.randInt(-100, 100) * mouseY);
+  if (object) {
+    object.rotateY((absMouseX * 0.05 + 0.2) * 0.03);
   }
+
+  if (sound) {
+    sound.setPlaybackRate(absMouseX * 0.01 + 0.5);
+  }
+
+  if (mixer) {
+    const delta = clock.getDelta();
+    mixer.update(delta * absMouseX * 0.005 + 0.005);
+  }
+
   camera.lookAt(scene.position);
 
   renderer.render(scene, camera);

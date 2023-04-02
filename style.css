@@ -36,9 +36,20 @@ body {
   position: relative;
 }
 
-#clear-objects {
+.buttons {
+  display: flex;
+  gap: 2em;
+  position: absolute;
+}
+
+button {
+  color: white;
+  border: 1px solid white;
+}
+
+#clear-objects,
+#sound {
   background: transparent;
   width: 5em;
   height: 5em;
-  position: absolute;
 }
